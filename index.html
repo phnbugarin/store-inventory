@@ -113,15 +113,17 @@
         <div class="scan-grid">
             <div class="card">
                 <h1>Input Terminal</h1>
+                <div id="scannerStatus" style="font-size: 11px; font-weight: bold; margin-bottom: 10px; color: var(--apple-green);">● HARDWARE SCANNER READY</div>
+                
                 <div class="btn-row" style="margin-bottom: 15px;">
                     <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Start Camera Scanner</button>
-                    <button class="btn-alt" onclick="input.focus()">Focus Manual Input</button>
+                    <button class="btn-alt" onclick="forceFocus()">Reset Hardware Focus</button>
                 </div>
                 
-                <div id="reader" class="hidden"></div>
+                <div id="reader" class="hidden" style="margin-bottom: 15px;"></div>
                 
                 <div id="manualInputArea">
-                    <input type="text" id="barcodeInput" placeholder="Scan with hardware or type here..." autofocus>
+                    <input type="text" id="barcodeInput" placeholder="Hardware scanner input..." autofocus>
                 </div>
 
                 <div class="btn-row">
@@ -164,10 +166,25 @@
     let isCameraRunning = false;
     const input = document.getElementById('barcodeInput');
     const feed = document.getElementById('activityFeed');
+    const statusIndicator = document.getElementById('scannerStatus');
+
+    // --- FIX 1: Force Focus ---
+    function forceFocus() {
+        input.focus();
+        statusIndicator.innerText = "● HARDWARE SCANNER READY";
+        statusIndicator.style.color = "var(--apple-green)";
+    }
+
+    // Monitor focus to alert user
+    input.addEventListener('blur', () => {
+        if(!isCameraRunning) {
+            statusIndicator.innerText = "○ SCANNER OFF-FOCUS (TAP RESET)";
+            statusIndicator.style.color = "var(--apple-red)";
+        }
+    });
 
     // --- Core Logic ---
 
-    // Excel Processing
     document.getElementById('excelUpload').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -190,18 +207,19 @@
             document.getElementById('setupBox').classList.add('hidden');
             document.getElementById('mainDashboard').classList.remove('hidden');
             updateUI();
+            setTimeout(forceFocus, 500);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // Barcode Processing Function
     function processBarcode(code) {
         if (!code) return;
         let match = false;
+        const cleanCode = code.trim();
 
         productMatrix.forEach(p => {
             for (let size in p.codes) {
-                if (p.codes[size] === code && code !== "") {
+                if (p.codes[size] === cleanCode && cleanCode !== "") {
                     p.counts[size]++;
                     history.unshift({ name: p.name, size: size, error: false });
                     speak(`${p.name}, ${size}`);
@@ -211,17 +229,18 @@
         });
 
         if (!match) {
-            history.unshift({ name: "Unknown Barcode", size: code, error: true });
-            speak("Unknown barcode");
+            history.unshift({ name: "Unknown Barcode", size: cleanCode, error: true });
+            speak("Unknown");
         }
         
         updateUI();
+        // --- FIX 2: Ensure focus returns after any scan ---
+        if(!isCameraRunning) forceFocus();
     }
 
-    // Manual Input Event
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            processBarcode(input.value.trim());
+            processBarcode(input.value);
             input.value = '';
         }
     });
@@ -233,29 +252,29 @@
         const btn = document.getElementById('camToggleBtn');
 
         if (!isCameraRunning) {
+            isCameraRunning = true;
             readerDiv.classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+            const config = { fps: 15, qrbox: { width: 250, height: 150 } };
 
             try {
-                // Unlock audio for iOS
-                speak("Camera starting");
-                
+                speak("Camera active");
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
                     config, 
                     (decodedText) => {
                         processBarcode(decodedText);
-                        // Brief pause to prevent double-scanning
                         html5QrCode.pause();
                         setTimeout(() => html5QrCode.resume(), 1500);
                     }
                 );
-                isCameraRunning = true;
                 btn.innerText = "Stop Camera Scanner";
                 btn.style.background = "var(--apple-red)";
+                statusIndicator.innerText = "● CAMERA MODE ACTIVE";
+                statusIndicator.style.color = "var(--apple-blue)";
             } catch (err) {
-                alert("Camera error: Check permissions in Safari settings.");
+                isCameraRunning = false;
+                alert("Camera error. Use hardware scanner.");
             }
         } else {
             await html5QrCode.stop();
@@ -263,22 +282,20 @@
             isCameraRunning = false;
             btn.innerText = "Start Camera Scanner";
             btn.style.background = "var(--apple-green)";
+            forceFocus();
         }
     }
-
-    // --- Helpers ---
 
     function speak(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
-            msg.rate = 1.1;
+            msg.rate = 1.2;
             window.speechSynthesis.speak(msg);
         }
     }
 
     function updateUI() {
-        // Update History
         feed.innerHTML = history.map((item, idx) => `
             <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
                 <div>
@@ -289,7 +306,6 @@
             </div>
         `).join('');
 
-        // Update Table
         const search = document.getElementById('tableSearch').value.toLowerCase();
         document.getElementById('matrixBody').innerHTML = productMatrix
             .filter(p => p.name.toLowerCase().includes(search))
@@ -312,6 +328,7 @@
         }
         history.splice(index, 1);
         updateUI();
+        forceFocus();
     }
 
     function exportResults() {
