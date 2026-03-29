@@ -30,10 +30,8 @@
         }
 
         .container { width: 100%; max-width: 1200px; margin: 0 auto; }
-
         .hidden { display: none !important; }
 
-        /* Grid Layout */
         .scan-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
@@ -58,7 +56,6 @@
         h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: -0.5px; }
         .label { font-size: 11px; font-weight: 700; color: var(--apple-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
-        /* Camera & Input */
         #reader { 
             width: 100%; 
             border-radius: 12px; 
@@ -78,11 +75,8 @@
             margin-bottom: 16px;
             box-sizing: border-box;
             outline: none;
-            transition: border 0.2s;
         }
-        input[type="text"]:focus { border-color: var(--apple-blue); }
 
-        /* History Styling */
         .activity-feed { 
             flex-grow: 1; 
             overflow-y: auto; 
@@ -103,10 +97,6 @@
             border: 1px solid var(--apple-border);
         }
 
-        .item-info strong { display: block; font-size: 14px; }
-        .item-info small { color: var(--apple-secondary); font-size: 12px; }
-
-        /* Buttons */
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
         button { 
             flex: 1;
@@ -116,16 +106,13 @@
             font-weight: 600; 
             cursor: pointer; 
             font-size: 13px;
-            transition: opacity 0.2s, transform 0.1s;
         }
-        button:active { transform: scale(0.98); opacity: 0.8; }
         
         .btn-main { background: var(--apple-blue); color: #fff; }
         .btn-cam { background: var(--apple-green); color: #fff; }
         .btn-alt { background: rgba(0,0,0,0.05); color: var(--apple-text); }
         .btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; flex: none; }
-        .btn-undo { background: var(--apple-red); color: white; padding: 6px 12px; font-size: 11px; flex: none; }
-
+        
         /* Table Matrix */
         .matrix-card { padding: 0; overflow: hidden; margin-top: 20px; }
         .matrix-header { padding: 20px 24px; border-bottom: 1px solid var(--apple-border); }
@@ -149,7 +136,7 @@
 <div class="container">
     <div id="setupBox" class="card" style="text-align: center; padding: 60px 20px;">
         <h1>RC Paint Trading</h1>
-        <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload your inventory spreadsheet to begin.</p>
+        <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload inventory spreadsheet (.xlsx) to begin.</p>
         <button class="btn-main" style="max-width: 300px; margin: 0 auto;" onclick="document.getElementById('excelUpload').click()">Choose Excel File</button>
         <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
     </div>
@@ -157,16 +144,18 @@
     <div id="mainDashboard" class="hidden">
         <div class="scan-grid">
             <div class="card">
-                <div class="label" id="status">● Terminal Ready</div>
+                <div style="display:flex; justify-content: space-between; align-items: center;">
+                    <div class="label" id="status">● Terminal Ready</div>
+                    <div class="label" style="cursor:pointer;" onclick="toggleMute()" id="muteLabel">🔊 Audio ON</div>
+                </div>
                 <h1>Input Hub</h1>
                 
                 <div id="reader" class="hidden"></div>
-                
                 <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." autofocus>
 
                 <div class="btn-row">
                     <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Camera Scanner</button>
-                    <button class="btn-alt" onclick="forceFocus()">Reset Focus</button>
+                    <button class="btn-alt" onclick="forceFocus()">Focus</button>
                     <button class="btn-main" onclick="exportResults()">Export Excel</button>
                 </div>
             </div>
@@ -194,8 +183,8 @@
 
 <div id="resolveModal">
     <div class="modal-content">
-        <h2 id="unknownDisplay" style="font-size: 18px;">Resolve Barcode</h2>
-        <input type="text" id="modalSearch" placeholder="Search product to link..." oninput="filterResolveList()" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
+        <h2 id="unknownDisplay">Resolve Barcode</h2>
+        <input type="text" id="modalSearch" placeholder="Search product..." oninput="filterResolveList()" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
         <div id="resolveList"></div>
         <button class="btn-alt" onclick="closeResolve()" style="width:100%; margin-top:15px;">Cancel</button>
     </div>
@@ -207,53 +196,58 @@
     let isCameraRunning = false;
     let html5QrCode = null;
     let pendingResolveIndex = null;
+    let isMuted = false;
 
     const input = document.getElementById('barcodeInput');
     const feed = document.getElementById('activityFeed');
 
-    // --- 1. Focus Control ---
-    function forceFocus() {
-        input.focus();
+    // --- Audio Reading Feature ---
+    function speak(text) {
+        if (isMuted) return;
+        window.speechSynthesis.cancel(); // Stop current speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.1; 
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
     }
+
+    function toggleMute() {
+        isMuted = !isMuted;
+        document.getElementById('muteLabel').innerText = isMuted ? "🔇 Audio OFF" : "🔊 Audio ON";
+    }
+
+    function forceFocus() { input.focus(); }
     setInterval(() => { if(!isCameraRunning && document.activeElement !== input) input.focus(); }, 3000);
 
-    // --- 2. File Upload Logic ---
+    // --- File Logic ---
     document.getElementById('excelUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(event) {
-            try {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet);
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            productMatrix = XLSX.utils.sheet_to_json(sheet).map(row => ({
+                name: row.Name || row.name || "Unknown",
+                codes: {
+                    "1/4 L": String(row["BC_1/4L"] || "").trim(),
+                    "1 L": String(row["BC_1L"] || "").trim(),
+                    "1 Gallon": String(row["BC_1G"] || "").trim(),
+                    "1 Pail": String(row["BC_Pail"] || "").trim()
+                },
+                counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 }
+            })).filter(p => p.name);
 
-                productMatrix = json.map(row => ({
-                    name: row.Name || row.name || "Unknown Product",
-                    codes: {
-                        "1/4 L": String(row["BC_1/4L"] || "").trim(),
-                        "1 L": String(row["BC_1L"] || "").trim(),
-                        "1 Gallon": String(row["BC_1G"] || "").trim(),
-                        "1 Pail": String(row["BC_Pail"] || "").trim()
-                    },
-                    counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 }
-                })).filter(p => p.name);
-
-                document.getElementById('setupBox').classList.add('hidden');
-                document.getElementById('mainDashboard').classList.remove('hidden');
-                updateUI();
-                forceFocus();
-            } catch (err) {
-                alert("Error reading Excel file. Please ensure it is a valid .xlsx file.");
-                console.error(err);
-            }
+            document.getElementById('setupBox').classList.add('hidden');
+            document.getElementById('mainDashboard').classList.remove('hidden');
+            speak("System Ready. Database loaded.");
+            updateUI();
         };
         reader.readAsArrayBuffer(file);
     });
 
-    // --- 3. Scanning Logic ---
+    // --- Processing ---
     function processBarcode(code) {
         if (!code) return;
         const cleanCode = code.trim();
@@ -264,6 +258,7 @@
                 if (p.codes[size] === cleanCode && cleanCode !== "") {
                     p.counts[size]++;
                     history.unshift({ name: p.name, size: size, code: cleanCode, error: false });
+                    speak(`${p.name}, ${size}`); // READING FEATURE
                     match = true;
                 }
             }
@@ -271,6 +266,7 @@
 
         if (!match) {
             history.unshift({ name: "Unknown Barcode", size: cleanCode, code: cleanCode, error: true });
+            speak("Unknown Barcode"); // READING FEATURE
         }
         updateUI();
     }
@@ -282,15 +278,11 @@
         }
     });
 
-    // --- 4. UI & Undo ---
+    // --- UI Update ---
     function updateUI() {
-        // Update Activity Feed
         feed.innerHTML = history.map((item, idx) => `
             <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
-                <div class="item-info">
-                    <strong>${item.name}</strong>
-                    <small>${item.size}</small>
-                </div>
+                <div><strong>${item.name}</strong><br><small>${item.size}</small></div>
                 <div class="btn-row" style="margin-top:0; flex:none;">
                     ${item.error ? `<button class="btn-resolve" onclick="openResolve(${idx})">Link</button>` : ''}
                     <button class="btn-alt" style="padding: 6px 12px; font-size: 11px;" onclick="undo(${idx})">Undo</button>
@@ -298,7 +290,6 @@
             </div>
         `).join('');
 
-        // Update Matrix Table
         const search = document.getElementById('tableSearch').value.toLowerCase();
         document.getElementById('matrixBody').innerHTML = productMatrix
             .filter(p => p.name.toLowerCase().includes(search))
@@ -323,31 +314,23 @@
         updateUI();
     }
 
-    // --- 5. Resolve Barcode Modal ---
+    // --- Modal Logic ---
     function openResolve(index) {
         pendingResolveIndex = index;
-        document.getElementById('unknownDisplay').innerText = "Linking: " + history[index].code;
         document.getElementById('resolveModal').style.display = 'flex';
         filterResolveList();
     }
-
-    function closeResolve() {
-        document.getElementById('resolveModal').style.display = 'none';
-    }
+    function closeResolve() { document.getElementById('resolveModal').style.display = 'none'; }
 
     function filterResolveList() {
         const term = document.getElementById('modalSearch').value.toLowerCase();
-        const list = document.getElementById('resolveList');
-        list.innerHTML = productMatrix
-            .filter(p => p.name.toLowerCase().includes(term))
-            .slice(0, 8)
+        document.getElementById('resolveList').innerHTML = productMatrix
+            .filter(p => p.name.toLowerCase().includes(term)).slice(0, 8)
             .map(p => `
-                <div style="border-bottom:1px solid #eee; padding:12px 0;">
-                    <strong style="font-size:14px;">${p.name}</strong>
+                <div style="border-bottom:1px solid #eee; padding:10px 0;">
+                    <strong>${p.name}</strong>
                     <div class="btn-row" style="margin-top:8px;">
-                        ${Object.keys(p.codes).map(size => `
-                            <button class="btn-alt" style="font-size:10px; padding:5px;" onclick="confirmResolve('${p.name.replace(/'/g, "\\'")}', '${size}')">${size}</button>
-                        `).join('')}
+                        ${Object.keys(p.codes).map(size => `<button class="btn-alt" onclick="confirmResolve('${p.name.replace(/'/g, "\\'")}', '${size}')">${size}</button>`).join('')}
                     </div>
                 </div>
             `).join('');
@@ -361,61 +344,43 @@
             item.name = prodName;
             item.size = size;
             item.error = false;
+            speak(`Linked to ${prodName}`);
         }
         closeResolve();
         updateUI();
     }
 
-    // --- 6. Camera Control ---
+    // --- Camera ---
     async function toggleCamera() {
         const readerDiv = document.getElementById('reader');
-        const btn = document.getElementById('camToggleBtn');
-        
         if (!isCameraRunning) {
             isCameraRunning = true;
             readerDiv.classList.remove('hidden');
-            btn.innerText = "Stop Camera";
-            btn.style.background = "var(--apple-red)";
-            
             html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 150 } }, 
-                (txt) => {
-                    processBarcode(txt);
-                    html5QrCode.pause();
-                    setTimeout(() => html5QrCode.resume(), 1500);
-                }
-            );
+            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+                processBarcode(txt);
+                html5QrCode.pause();
+                setTimeout(() => html5QrCode.resume(), 1500);
+            });
         } else {
             await html5QrCode.stop();
             readerDiv.classList.add('hidden');
-            btn.innerText = "Camera Scanner";
-            btn.style.background = "var(--apple-green)";
             isCameraRunning = false;
         }
     }
 
-    // --- 7. Export Logic ---
+    // --- Export ---
     function exportResults() {
-        if (productMatrix.length === 0) return alert("No data to export");
-        
         const wb = XLSX.utils.book_new();
         const data = productMatrix.map(p => ({
-            "Product": p.name, 
-            "1/4 L": p.counts["1/4 L"], 
-            "1 L": p.counts["1 L"], 
-            "1 Gallon": p.counts["1 Gallon"], 
-            "Pail": p.counts["1 Pail"]
+            "Product": p.name, "1/4L": p.counts["1/4 L"], "1L": p.counts["1 L"], "1G": p.counts["1 Gallon"], "Pail": p.counts["1 Pail"]
         }));
-
         const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, "Inventory_Counts");
-        XLSX.writeFile(wb, "Inventory_Scan_Results.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+        XLSX.writeFile(wb, "Inventory_Counts.xlsx");
     }
 
     document.getElementById('tableSearch').addEventListener('input', updateUI);
 </script>
-
 </body>
 </html>
