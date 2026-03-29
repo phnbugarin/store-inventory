@@ -1,386 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RC Paint Trading - Pro Scanner</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    
-    <style>
-        :root {
-            --apple-blue: #007AFF;
-            --apple-bg: #F2F2F7;
-            --apple-card: rgba(255, 255, 255, 0.9);
-            --apple-text: #1C1C1E;
-            --apple-secondary: #8E8E93;
-            --apple-border: rgba(0, 0, 0, 0.1);
-            --apple-red: #FF3B30;
-            --apple-green: #34C759;
-            --radius: 16px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RC Paint Trading - Pro Scanner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-            background-color: var(--apple-bg);
-            color: var(--apple-text);
-            margin: 0;
-            padding: 20px;
-            -webkit-font-smoothing: antialiased;
-        }
+<style>
+:root {
+    --apple-blue: #007AFF;
+    --apple-bg: #F2F2F7;
+    --apple-card: rgba(255, 255, 255, 0.9);
+    --apple-text: #1C1C1E;
+    --apple-secondary: #8E8E93;
+    --apple-border: rgba(0, 0, 0, 0.1);
+    --apple-red: #FF3B30;
+    --apple-green: #34C759;
+    --radius: 16px;
+}
 
-        .container { width: 100%; max-width: 1200px; margin: 0 auto; }
-        .hidden { display: none !important; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    background-color: var(--apple-bg);
+    color: var(--apple-text);
+    margin: 0;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+}
 
-        .scan-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
-            margin-bottom: 24px;
-            align-items: stretch;
-        }
+.container { width: 100%; max-width: 1200px; margin: 0 auto; }
+.hidden { display: none !important; }
 
-        .card {
-            background: var(--apple-card);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border-radius: var(--radius);
-            border: 1px solid var(--apple-border);
-            padding: 24px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
-        }
+.scan-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+    margin-bottom: 24px;
+    align-items: stretch;
+}
 
-        h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: -0.5px; }
-        .label { font-size: 11px; font-weight: 700; color: var(--apple-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.card {
+    background: var(--apple-card);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border-radius: var(--radius);
+    border: 1px solid var(--apple-border);
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
 
-        #reader { 
-            width: 100%; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            background: #000; 
-            margin-bottom: 16px;
-            border: 1px solid var(--apple-border);
-        }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+.label { font-size: 11px; font-weight: 700; color: var(--apple-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid var(--apple-border);
-            font-size: 16px;
-            background: rgba(255,255,255,0.5);
-            margin-bottom: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
+#reader { 
+    width: 100%; 
+    border-radius: 12px; 
+    overflow: hidden; 
+    background: #000; 
+    margin-bottom: 16px;
+    border: 1px solid var(--apple-border);
+}
 
-        .activity-feed { 
-            flex-grow: 1; 
-            overflow-y: auto; 
-            background: rgba(0,0,0,0.03);
-            border-radius: 12px;
-            padding: 12px;
-            min-height: 350px;
-        }
+input[type="text"] {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--apple-border);
+    font-size: 16px;
+    background: rgba(255,255,255,0.5);
+    margin-bottom: 16px;
+    box-sizing: border-box;
+    outline: none;
+}
 
-        .activity-item {
-            background: #fff;
-            padding: 14px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid var(--apple-border);
-        }
+.activity-feed { 
+    flex-grow: 1; 
+    overflow-y: auto; 
+    background: rgba(0,0,0,0.03);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 350px;
+}
 
-        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        button { 
-            flex: 1;
-            padding: 12px 16px; 
-            border-radius: 10px; 
-            border: none; 
-            font-weight: 600; 
-            cursor: pointer; 
-            font-size: 13px;
-        }
-        
-        .btn-main { background: var(--apple-blue); color: #fff; }
-        .btn-cam { background: var(--apple-green); color: #fff; }
-        .btn-alt { background: rgba(0,0,0,0.05); color: var(--apple-text); }
-        .btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; flex: none; }
-        
-        /* Table Matrix */
-        .matrix-card { padding: 0; overflow: hidden; margin-top: 20px; }
-        .matrix-header { padding: 20px 24px; border-bottom: 1px solid var(--apple-border); }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 12px; color: var(--apple-secondary); padding: 16px 24px; background: rgba(0,0,0,0.02); }
-        td { padding: 14px 24px; border-bottom: 1px solid var(--apple-border); font-size: 14px; }
-        .active-num { color: var(--apple-blue); font-weight: 700; }
+.activity-item {
+    background: #fff;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--apple-border);
+}
 
-        /* Modal */
-        #resolveModal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000;
-        }
-        .modal-content { background: white; padding: 24px; border-radius: var(--radius); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+button { 
+    flex: 1;
+    padding: 12px 16px; 
+    border-radius: 10px; 
+    border: none; 
+    font-weight: 600; 
+    cursor: pointer; 
+    font-size: 13px;
+}
 
-        @media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } }
-    </style>
+.btn-main { background: var(--apple-blue); color: #fff; }
+.btn-cam { background: var(--apple-green); color: #fff; }
+.btn-alt { background: rgba(0,0,0,0.05); color: var(--apple-text); }
+.btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; flex: none; }
+
+/* Table Matrix */
+.matrix-card { padding: 0; overflow: hidden; margin-top: 20px; }
+.matrix-header { padding: 20px 24px; border-bottom: 1px solid var(--apple-border); }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; color: var(--apple-secondary); padding: 16px 24px; background: rgba(0,0,0,0.02); }
+td { padding: 14px 24px; border-bottom: 1px solid var(--apple-border); font-size: 14px; transition: background-color 1s ease; }
+.active-num { color: var(--apple-blue); font-weight: 700; }
+.highlight { background-color: #FFF7C0; } /* light yellow highlight for updated tally */
+
+/* Modal */
+#resolveModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-content { background: white; padding: 24px; border-radius: var(--radius); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+
+@media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 
 <div class="container">
-    <div id="setupBox" class="card" style="text-align: center; padding: 60px 20px;">
-        <h1>RC Paint Trading</h1>
-        <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload inventory spreadsheet (.xlsx) to begin.</p>
-        <button class="btn-main" style="max-width: 300px; margin: 0 auto;" onclick="document.getElementById('excelUpload').click()">Choose Excel File</button>
-        <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
-    </div>
+<div id="setupBox" class="card" style="text-align: center; padding: 60px 20px;">
+    <h1>RC Paint Trading</h1>
+    <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload inventory spreadsheet (.xlsx) to begin.</p>
+    <button class="btn-main" style="max-width: 300px; margin: 0 auto;" onclick="document.getElementById('excelUpload').click()">Choose Excel File</button>
+    <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
+</div>
 
-    <div id="mainDashboard" class="hidden">
-        <div class="scan-grid">
-            <div class="card">
-                <div style="display:flex; justify-content: space-between; align-items: center;">
-                    <div class="label" id="status">● Terminal Ready</div>
-                    <div class="label" style="cursor:pointer;" onclick="toggleMute()" id="muteLabel">🔊 Audio ON</div>
-                </div>
-                <h1>Input Hub</h1>
-                
-                <div id="reader" class="hidden"></div>
-                <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." autofocus>
-
-                <div class="btn-row">
-                    <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Camera Scanner</button>
-                    <button class="btn-alt" onclick="forceFocus()">Focus</button>
-                    <button class="btn-main" onclick="exportResults()">Export Excel</button>
-                </div>
+<div id="mainDashboard" class="hidden">
+    <div class="scan-grid">
+        <div class="card">
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                <div class="label" id="status">● Terminal Ready</div>
+                <div class="label" style="cursor:pointer;" onclick="toggleMute()" id="muteLabel">🔊 Audio ON</div>
             </div>
+            <h1>Input Hub</h1>
+            
+            <div id="reader" class="hidden"></div>
+            <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." autofocus>
 
-            <div class="card">
-                <div class="label">Recent Activity</div>
-                <div class="activity-feed" id="activityFeed"></div>
+            <div class="btn-row">
+                <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Camera Scanner</button>
+                <button class="btn-alt" onclick="forceFocus()">Focus</button>
+                <button class="btn-main" onclick="exportResults()">Export Excel</button>
             </div>
         </div>
 
-        <div class="card matrix-card">
-            <div class="matrix-header">
-                <div class="label">Inventory Summary</div>
-                <input type="text" id="tableSearch" placeholder="Search products..." style="margin: 10px 0 0 0; padding: 10px;">
-            </div>
-            <table>
-                <thead>
-                    <tr><th>Product</th><th>1/4 L</th><th>1 L</th><th>1 Gal</th><th>Pail</th></tr>
-                </thead>
-                <tbody id="matrixBody"></tbody>
-            </table>
+        <div class="card">
+            <div class="label">Recent Activity</div>
+            <div class="activity-feed" id="activityFeed"></div>
         </div>
     </div>
+
+    <div class="card matrix-card">
+        <div class="matrix-header">
+            <div class="label">Inventory Summary</div>
+            <input type="text" id="tableSearch" placeholder="Search products..." style="margin: 10px 0 0 0; padding: 10px;">
+        </div>
+        <table>
+            <thead>
+                <tr><th>Product</th><th>1/4 L</th><th>1 L</th><th>1 Gal</th><th>Pail</th></tr>
+            </thead>
+            <tbody id="matrixBody"></tbody>
+        </table>
+    </div>
+</div>
 </div>
 
 <div id="resolveModal">
-    <div class="modal-content">
-        <h2 id="unknownDisplay">Resolve Barcode</h2>
-        <input type="text" id="modalSearch" placeholder="Search product..." oninput="filterResolveList()" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
-        <div id="resolveList"></div>
-        <button class="btn-alt" onclick="closeResolve()" style="width:100%; margin-top:15px;">Cancel</button>
-    </div>
+<div class="modal-content">
+    <h2 id="unknownDisplay">Resolve Barcode</h2>
+    <input type="text" id="modalSearch" placeholder="Search product..." oninput="filterResolveList()" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
+    <div id="resolveList"></div>
+    <button class="btn-alt" onclick="closeResolve()" style="width:100%; margin-top:15px;">Cancel</button>
+</div>
 </div>
 
 <script>
-    let productMatrix = [];
-    let history = [];
-    let isCameraRunning = false;
-    let html5QrCode = null;
-    let pendingResolveIndex = null;
-    let isMuted = false;
+let productMatrix = [];
+let history = [];
+let isCameraRunning = false;
+let html5QrCode = null;
+let pendingResolveIndex = null;
+let isMuted = false;
+let canSpeak = false;
 
-    const input = document.getElementById('barcodeInput');
-    const feed = document.getElementById('activityFeed');
+// --- iOS/iPadOS Text-to-Speech requires user interaction ---
+document.body.addEventListener('click', () => { canSpeak = true; }, { once: true });
 
-    // --- Audio Reading Feature ---
-    function speak(text) {
-        if (isMuted) return;
-        window.speechSynthesis.cancel(); // Stop current speech
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.1; 
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-    }
+const input = document.getElementById('barcodeInput');
+const feed = document.getElementById('activityFeed');
 
-    function toggleMute() {
-        isMuted = !isMuted;
-        document.getElementById('muteLabel').innerText = isMuted ? "🔇 Audio OFF" : "🔊 Audio ON";
-    }
+function speak(text) {
+    if (!canSpeak || isMuted) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.1;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+}
 
-    function forceFocus() { input.focus(); }
-    setInterval(() => { if(!isCameraRunning && document.activeElement !== input) input.focus(); }, 3000);
+function toggleMute() {
+    isMuted = !isMuted;
+    document.getElementById('muteLabel').innerText = isMuted ? "🔇 Audio OFF" : "🔊 Audio ON";
+}
 
-    // --- File Logic ---
-    document.getElementById('excelUpload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            productMatrix = XLSX.utils.sheet_to_json(sheet).map(row => ({
-                name: row.Name || row.name || "Unknown",
-                codes: {
-                    "1/4 L": String(row["BC_1/4L"] || "").trim(),
-                    "1 L": String(row["BC_1L"] || "").trim(),
-                    "1 Gallon": String(row["BC_1G"] || "").trim(),
-                    "1 Pail": String(row["BC_Pail"] || "").trim()
-                },
-                counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 }
-            })).filter(p => p.name);
+function forceFocus() { input.focus(); }
+setInterval(() => { if(!isCameraRunning && document.activeElement !== input) input.focus(); }, 3000);
 
-            document.getElementById('setupBox').classList.add('hidden');
-            document.getElementById('mainDashboard').classList.remove('hidden');
-            speak("System Ready. Database loaded.");
-            updateUI();
-        };
-        reader.readAsArrayBuffer(file);
-    });
+// --- File Logic ---
+document.getElementById('excelUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        productMatrix = XLSX.utils.sheet_to_json(sheet).map(row => ({
+            name: row.Name || row.name || "Unknown",
+            codes: {
+                "1/4 L": String(row["BC_1/4L"] || "").trim(),
+                "1 L": String(row["BC_1L"] || "").trim(),
+                "1 Gallon": String(row["BC_1G"] || "").trim(),
+                "1 Pail": String(row["BC_Pail"] || "").trim()
+            },
+            counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 },
+            justUpdated: {}
+        })).filter(p => p.name);
 
-    // --- Processing ---
-    function processBarcode(code) {
-        if (!code) return;
-        const cleanCode = code.trim();
-        let match = false;
-
-        productMatrix.forEach(p => {
-            for (let size in p.codes) {
-                if (p.codes[size] === cleanCode && cleanCode !== "") {
-                    p.counts[size]++;
-                    history.unshift({ name: p.name, size: size, code: cleanCode, error: false });
-                    speak(`${p.name}, ${size}`); // READING FEATURE
-                    match = true;
-                }
-            }
-        });
-
-        if (!match) {
-            history.unshift({ name: "Unknown Barcode", size: cleanCode, code: cleanCode, error: true });
-            speak("Unknown Barcode"); // READING FEATURE
-        }
+        document.getElementById('setupBox').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.remove('hidden');
+        speak("System Ready. Database loaded.");
         updateUI();
-    }
+    };
+    reader.readAsArrayBuffer(file);
+});
 
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            processBarcode(input.value);
-            input.value = '';
+// --- Processing ---
+function processBarcode(code) {
+    if (!code) return;
+    const cleanCode = code.trim();
+    let match = false;
+
+    productMatrix.forEach(p => {
+        for (let size in p.codes) {
+            if (p.codes[size] === cleanCode && cleanCode !== "") {
+                p.counts[size]++;
+                p.justUpdated[size] = true;
+                history.unshift({ name: p.name, size: size, code: cleanCode, error: false });
+                speak(`${p.name}, ${size}`);
+                match = true;
+            }
         }
     });
 
-    // --- UI Update ---
-    function updateUI() {
-        feed.innerHTML = history.map((item, idx) => `
-            <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
-                <div><strong>${item.name}</strong><br><small>${item.size}</small></div>
-                <div class="btn-row" style="margin-top:0; flex:none;">
-                    ${item.error ? `<button class="btn-resolve" onclick="openResolve(${idx})">Link</button>` : ''}
-                    <button class="btn-alt" style="padding: 6px 12px; font-size: 11px;" onclick="undo(${idx})">Undo</button>
+    if (!match) {
+        history.unshift({ name: "Unknown Barcode", size: cleanCode, code: cleanCode, error: true });
+        speak("Unknown Barcode");
+    }
+    updateUI();
+}
+
+input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        processBarcode(input.value);
+        input.value = '';
+    }
+});
+
+// --- UI Update ---
+function updateUI() {
+    feed.innerHTML = history.map((item, idx) => `
+        <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
+            <div><strong>${item.name}</strong><br><small>${item.size}</small></div>
+            <div class="btn-row" style="margin-top:0; flex:none;">
+                ${item.error ? `<button class="btn-resolve" onclick="openResolve(${idx})">Link</button>` : ''}
+                <button class="btn-alt" style="padding: 6px 12px; font-size: 11px;" onclick="undo(${idx})">Undo</button>
+            </div>
+        </div>
+    `).join('');
+
+    const search = document.getElementById('tableSearch').value.toLowerCase();
+    document.getElementById('matrixBody').innerHTML = productMatrix
+        .filter(p => p.name.toLowerCase().includes(search))
+        .map(p => `
+            <tr>
+                <td><strong>${p.name}</strong></td>
+                ${["1/4 L","1 L","1 Gallon","1 Pail"].map(size => `
+                    <td class="${p.counts[size] > 0 ? 'active-num' : ''} ${p.justUpdated[size] ? 'highlight' : ''}">
+                        ${p.counts[size]}
+                    </td>
+                `).join('')}
+            </tr>
+        `).join('');
+
+    // Clear highlight after 1s
+    productMatrix.forEach(p => {
+        if(Object.values(p.justUpdated).some(v => v)){
+            setTimeout(() => { p.justUpdated = {}; updateUI(); }, 1000);
+        }
+    });
+}
+
+function undo(idx) {
+    const item = history[idx];
+    if (!item.error) {
+        const p = productMatrix.find(prod => prod.name === item.name);
+        if (p) {
+            p.counts[item.size] = Math.max(0, p.counts[item.size]-1);
+            p.justUpdated[item.size] = true;
+        }
+    }
+    history.splice(idx, 1);
+    updateUI();
+}
+
+// --- Modal ---
+function openResolve(index) {
+    pendingResolveIndex = index;
+    document.getElementById('resolveModal').style.display = 'flex';
+    filterResolveList();
+}
+function closeResolve() { document.getElementById('resolveModal').style.display = 'none'; }
+
+function filterResolveList() {
+    const term = document.getElementById('modalSearch').value.toLowerCase();
+    document.getElementById('resolveList').innerHTML = productMatrix
+        .filter(p => p.name.toLowerCase().includes(term)).slice(0, 8)
+        .map(p => `
+            <div style="border-bottom:1px solid #eee; padding:10px 0;">
+                <strong>${p.name}</strong>
+                <div class="btn-row" style="margin-top:8px;">
+                    ${Object.keys(p.codes).map(size => `<button class="btn-alt" onclick="confirmResolve('${p.name.replace(/'/g, "\\'")}', '${size}')">${size}</button>`).join('')}
                 </div>
             </div>
         `).join('');
+}
 
-        const search = document.getElementById('tableSearch').value.toLowerCase();
-        document.getElementById('matrixBody').innerHTML = productMatrix
-            .filter(p => p.name.toLowerCase().includes(search))
-            .map(p => `
-                <tr>
-                    <td><strong>${p.name}</strong></td>
-                    <td class="${p.counts["1/4 L"] > 0 ? 'active-num' : ''}">${p.counts["1/4 L"]}</td>
-                    <td class="${p.counts["1 L"] > 0 ? 'active-num' : ''}">${p.counts["1 L"]}</td>
-                    <td class="${p.counts["1 Gallon"] > 0 ? 'active-num' : ''}">${p.counts["1 Gallon"]}</td>
-                    <td class="${p.counts["1 Pail"] > 0 ? 'active-num' : ''}">${p.counts["1 Pail"]}</td>
-                </tr>
-            `).join('');
+function confirmResolve(prodName, size) {
+    const item = history[pendingResolveIndex];
+    const p = productMatrix.find(prod => prod.name === prodName);
+    if (p) {
+        p.counts[size]++;
+        p.justUpdated[size] = true;
+        item.name = prodName;
+        item.size = size;
+        item.error = false;
+        speak(`Linked to ${prodName}`);
     }
+    closeResolve();
+    updateUI();
+}
 
-    function undo(idx) {
-        const item = history[idx];
-        if (!item.error) {
-            const p = productMatrix.find(prod => prod.name === item.name);
-            if (p) p.counts[item.size]--;
-        }
-        history.splice(idx, 1);
-        updateUI();
+// --- Camera ---
+async function toggleCamera() {
+    const readerDiv = document.getElementById('reader');
+    if (!isCameraRunning) {
+        isCameraRunning = true;
+        readerDiv.classList.remove('hidden');
+        html5QrCode = new Html5Qrcode("reader");
+        await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+            processBarcode(txt);
+            html5QrCode.pause();
+            setTimeout(() => html5QrCode.resume(), 1500);
+        });
+    } else {
+        await html5QrCode.stop();
+        readerDiv.classList.add('hidden');
+        isCameraRunning = false;
     }
+}
 
-    // --- Modal Logic ---
-    function openResolve(index) {
-        pendingResolveIndex = index;
-        document.getElementById('resolveModal').style.display = 'flex';
-        filterResolveList();
-    }
-    function closeResolve() { document.getElementById('resolveModal').style.display = 'none'; }
+// --- Export ---
+function exportResults() {
+    const wb = XLSX.utils.book_new();
+    const data = productMatrix.map(p => ({
+        "Product": p.name, "1/4L": p.counts["1/4 L"], "1L": p.counts["1 L"], "1G": p.counts["1 Gallon"], "Pail": p.counts["1 Pail"]
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, "Inventory_Counts.xlsx");
+}
 
-    function filterResolveList() {
-        const term = document.getElementById('modalSearch').value.toLowerCase();
-        document.getElementById('resolveList').innerHTML = productMatrix
-            .filter(p => p.name.toLowerCase().includes(term)).slice(0, 8)
-            .map(p => `
-                <div style="border-bottom:1px solid #eee; padding:10px 0;">
-                    <strong>${p.name}</strong>
-                    <div class="btn-row" style="margin-top:8px;">
-                        ${Object.keys(p.codes).map(size => `<button class="btn-alt" onclick="confirmResolve('${p.name.replace(/'/g, "\\'")}', '${size}')">${size}</button>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-    }
-
-    function confirmResolve(prodName, size) {
-        const item = history[pendingResolveIndex];
-        const p = productMatrix.find(prod => prod.name === prodName);
-        if (p) {
-            p.counts[size]++;
-            item.name = prodName;
-            item.size = size;
-            item.error = false;
-            speak(`Linked to ${prodName}`);
-        }
-        closeResolve();
-        updateUI();
-    }
-
-    // --- Camera ---
-    async function toggleCamera() {
-        const readerDiv = document.getElementById('reader');
-        if (!isCameraRunning) {
-            isCameraRunning = true;
-            readerDiv.classList.remove('hidden');
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
-                processBarcode(txt);
-                html5QrCode.pause();
-                setTimeout(() => html5QrCode.resume(), 1500);
-            });
-        } else {
-            await html5QrCode.stop();
-            readerDiv.classList.add('hidden');
-            isCameraRunning = false;
-        }
-    }
-
-    // --- Export ---
-    function exportResults() {
-        const wb = XLSX.utils.book_new();
-        const data = productMatrix.map(p => ({
-            "Product": p.name, "1/4L": p.counts["1/4 L"], "1L": p.counts["1 L"], "1G": p.counts["1 Gallon"], "Pail": p.counts["1 Pail"]
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-        XLSX.writeFile(wb, "Inventory_Counts.xlsx");
-    }
-
-    document.getElementById('tableSearch').addEventListener('input', updateUI);
+document.getElementById('tableSearch').addEventListener('input', updateUI);
 </script>
 </body>
 </html>
