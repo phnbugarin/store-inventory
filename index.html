@@ -31,6 +31,8 @@
 
         .container { width: 100%; max-width: 1200px; margin: 0 auto; }
 
+        .hidden { display: none !important; }
+
         /* Grid Layout */
         .scan-grid { 
             display: grid; 
@@ -87,7 +89,7 @@
             background: rgba(0,0,0,0.03);
             border-radius: 12px;
             padding: 12px;
-            min-height: 350px; /* Aligns with camera height roughly */
+            min-height: 350px;
         }
 
         .activity-item {
@@ -121,15 +123,23 @@
         .btn-main { background: var(--apple-blue); color: #fff; }
         .btn-cam { background: var(--apple-green); color: #fff; }
         .btn-alt { background: rgba(0,0,0,0.05); color: var(--apple-text); }
-        .btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; }
+        .btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; flex: none; }
+        .btn-undo { background: var(--apple-red); color: white; padding: 6px 12px; font-size: 11px; flex: none; }
 
         /* Table Matrix */
-        .matrix-card { padding: 0; overflow: hidden; }
+        .matrix-card { padding: 0; overflow: hidden; margin-top: 20px; }
         .matrix-header { padding: 20px 24px; border-bottom: 1px solid var(--apple-border); }
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; font-size: 12px; color: var(--apple-secondary); padding: 16px 24px; background: rgba(0,0,0,0.02); }
         td { padding: 14px 24px; border-bottom: 1px solid var(--apple-border); font-size: 14px; }
         .active-num { color: var(--apple-blue); font-weight: 700; }
+
+        /* Modal */
+        #resolveModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-content { background: white; padding: 24px; border-radius: var(--radius); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
 
         @media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } }
     </style>
@@ -141,30 +151,29 @@
         <h1>RC Paint Trading</h1>
         <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload your inventory spreadsheet to begin.</p>
         <button class="btn-main" style="max-width: 300px; margin: 0 auto;" onclick="document.getElementById('excelUpload').click()">Choose Excel File</button>
-        <input type="file" id="excelUpload" class="hidden" accept=".xlsx" style="display:none">
+        <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
     </div>
 
-    <div id="mainDashboard" class="hidden" style="display:none">
+    <div id="mainDashboard" class="hidden">
         <div class="scan-grid">
             <div class="card">
                 <div class="label" id="status">● Terminal Ready</div>
                 <h1>Input Hub</h1>
                 
-                <div id="reader" class="hidden" style="display:none"></div>
+                <div id="reader" class="hidden"></div>
                 
-                <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." inputmode="none">
+                <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." autofocus>
 
                 <div class="btn-row">
                     <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Camera Scanner</button>
                     <button class="btn-alt" onclick="forceFocus()">Reset Focus</button>
-                    <button class="btn-main" onclick="exportResults()">Export data</button>
+                    <button class="btn-main" onclick="exportResults()">Export Excel</button>
                 </div>
             </div>
 
             <div class="card">
                 <div class="label">Recent Activity</div>
-                <div class="activity-feed" id="activityFeed">
-                    </div>
+                <div class="activity-feed" id="activityFeed"></div>
             </div>
         </div>
 
@@ -183,6 +192,15 @@
     </div>
 </div>
 
+<div id="resolveModal">
+    <div class="modal-content">
+        <h2 id="unknownDisplay" style="font-size: 18px;">Resolve Barcode</h2>
+        <input type="text" id="modalSearch" placeholder="Search product to link..." oninput="filterResolveList()" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
+        <div id="resolveList"></div>
+        <button class="btn-alt" onclick="closeResolve()" style="width:100%; margin-top:15px;">Cancel</button>
+    </div>
+</div>
+
 <script>
     let productMatrix = [];
     let history = [];
@@ -193,43 +211,49 @@
     const input = document.getElementById('barcodeInput');
     const feed = document.getElementById('activityFeed');
 
-    // --- 1. Keyboard & Focus Control ---
+    // --- 1. Focus Control ---
     function forceFocus() {
         input.focus();
-        // Prevent iPad keyboard even if clicked
-        input.setAttribute('readonly', 'readonly');
-        setTimeout(() => { input.removeAttribute('readonly'); }, 100);
     }
+    setInterval(() => { if(!isCameraRunning && document.activeElement !== input) input.focus(); }, 3000);
 
-    // Auto-focus every 3 seconds if not in camera mode
-    setInterval(() => { if(!isCameraRunning) input.focus(); }, 3000);
-
-    // --- 2. Data Logic ---
+    // --- 2. File Upload Logic ---
     document.getElementById('excelUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
         reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            productMatrix = XLSX.utils.sheet_to_json(sheet).map(row => ({
-                name: row.Name || row.name || "Unknown",
-                codes: {
-                    "1/4 L": String(row["BC_1/4L"] || "").trim(),
-                    "1 L": String(row["BC_1L"] || "").trim(),
-                    "1 Gallon": String(row["BC_1G"] || "").trim(),
-                    "1 Pail": String(row["BC_Pail"] || "").trim()
-                },
-                counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 }
-            })).filter(p => p.name);
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
 
-            document.getElementById('setupBox').classList.add('hidden');
-            document.getElementById('mainDashboard').classList.remove('hidden');
-            updateUI();
-            forceFocus();
+                productMatrix = json.map(row => ({
+                    name: row.Name || row.name || "Unknown Product",
+                    codes: {
+                        "1/4 L": String(row["BC_1/4L"] || "").trim(),
+                        "1 L": String(row["BC_1L"] || "").trim(),
+                        "1 Gallon": String(row["BC_1G"] || "").trim(),
+                        "1 Pail": String(row["BC_Pail"] || "").trim()
+                    },
+                    counts: { "1/4 L": 0, "1 L": 0, "1 Gallon": 0, "1 Pail": 0 }
+                })).filter(p => p.name);
+
+                document.getElementById('setupBox').classList.add('hidden');
+                document.getElementById('mainDashboard').classList.remove('hidden');
+                updateUI();
+                forceFocus();
+            } catch (err) {
+                alert("Error reading Excel file. Please ensure it is a valid .xlsx file.");
+                console.error(err);
+            }
         };
-        reader.readAsArrayBuffer(e.target.files[0]);
+        reader.readAsArrayBuffer(file);
     });
 
+    // --- 3. Scanning Logic ---
     function processBarcode(code) {
         if (!code) return;
         const cleanCode = code.trim();
@@ -246,7 +270,7 @@
         });
 
         if (!match) {
-            history.unshift({ name: "Unknown", size: "Unknown", code: cleanCode, error: true });
+            history.unshift({ name: "Unknown Barcode", size: cleanCode, code: cleanCode, error: true });
         }
         updateUI();
     }
@@ -258,81 +282,23 @@
         }
     });
 
-    // --- 3. Resolve Feature ---
-    function openResolve(index) {
-        pendingResolveIndex = index;
-        document.getElementById('unknownDisplay').innerText = "Barcode: " + history[index].code;
-        document.getElementById('resolveModal').style.display = 'flex';
-        filterResolveList();
-    }
-
-    function closeResolve() {
-        document.getElementById('resolveModal').style.display = 'none';
-    }
-
-    function filterResolveList() {
-        const term = document.getElementById('modalSearch').value.toLowerCase();
-        const list = document.getElementById('resolveList');
-        list.innerHTML = productMatrix
-            .filter(p => p.name.toLowerCase().includes(term))
-            .slice(0, 10) // Limit results for speed
-            .map(p => `
-                <div style="border-bottom:1px solid #eee; padding:10px;">
-                    <strong>${p.name}</strong><br>
-                    <div class="btn-row">
-                        ${Object.keys(p.codes).map(size => `
-                            <button class="btn-alt" onclick="confirmResolve('${p.name}', '${size}')">${size}</button>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
-    }
-
-    function confirmResolve(prodName, size) {
-        const item = history[pendingResolveIndex];
-        const p = productMatrix.find(prod => prod.name === prodName);
-        if (p) {
-            p.counts[size]++;
-            item.name = prodName;
-            item.size = size;
-            item.error = false;
-        }
-        closeResolve();
-        updateUI();
-    }
-
-    // --- 4. Camera ---
-    async function toggleCamera() {
-        const readerDiv = document.getElementById('reader');
-        if (!isCameraRunning) {
-            isCameraRunning = true;
-            readerDiv.classList.remove('hidden');
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
-                processBarcode(txt);
-                html5QrCode.pause();
-                setTimeout(() => html5QrCode.resume(), 1500);
-            });
-        } else {
-            await html5QrCode.stop();
-            readerDiv.classList.add('hidden');
-            isCameraRunning = false;
-        }
-    }
-
+    // --- 4. UI & Undo ---
     function updateUI() {
+        // Update Activity Feed
         feed.innerHTML = history.map((item, idx) => `
             <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
-                <div style="max-width: 60%;">
-                    <strong>${item.name}</strong><br><small>${item.size}</small>
+                <div class="item-info">
+                    <strong>${item.name}</strong>
+                    <small>${item.size}</small>
                 </div>
-                <div class="btn-row" style="margin-top:0">
-                    ${item.error ? `<button class="btn-resolve" onclick="openResolve(${idx})">Resolve</button>` : ''}
-                    <button class="btn-alt" onclick="undo(${idx})">Undo</button>
+                <div class="btn-row" style="margin-top:0; flex:none;">
+                    ${item.error ? `<button class="btn-resolve" onclick="openResolve(${idx})">Link</button>` : ''}
+                    <button class="btn-alt" style="padding: 6px 12px; font-size: 11px;" onclick="undo(${idx})">Undo</button>
                 </div>
             </div>
         `).join('');
 
+        // Update Matrix Table
         const search = document.getElementById('tableSearch').value.toLowerCase();
         document.getElementById('matrixBody').innerHTML = productMatrix
             .filter(p => p.name.toLowerCase().includes(search))
@@ -357,14 +323,99 @@
         updateUI();
     }
 
+    // --- 5. Resolve Barcode Modal ---
+    function openResolve(index) {
+        pendingResolveIndex = index;
+        document.getElementById('unknownDisplay').innerText = "Linking: " + history[index].code;
+        document.getElementById('resolveModal').style.display = 'flex';
+        filterResolveList();
+    }
+
+    function closeResolve() {
+        document.getElementById('resolveModal').style.display = 'none';
+    }
+
+    function filterResolveList() {
+        const term = document.getElementById('modalSearch').value.toLowerCase();
+        const list = document.getElementById('resolveList');
+        list.innerHTML = productMatrix
+            .filter(p => p.name.toLowerCase().includes(term))
+            .slice(0, 8)
+            .map(p => `
+                <div style="border-bottom:1px solid #eee; padding:12px 0;">
+                    <strong style="font-size:14px;">${p.name}</strong>
+                    <div class="btn-row" style="margin-top:8px;">
+                        ${Object.keys(p.codes).map(size => `
+                            <button class="btn-alt" style="font-size:10px; padding:5px;" onclick="confirmResolve('${p.name.replace(/'/g, "\\'")}', '${size}')">${size}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    function confirmResolve(prodName, size) {
+        const item = history[pendingResolveIndex];
+        const p = productMatrix.find(prod => prod.name === prodName);
+        if (p) {
+            p.counts[size]++;
+            item.name = prodName;
+            item.size = size;
+            item.error = false;
+        }
+        closeResolve();
+        updateUI();
+    }
+
+    // --- 6. Camera Control ---
+    async function toggleCamera() {
+        const readerDiv = document.getElementById('reader');
+        const btn = document.getElementById('camToggleBtn');
+        
+        if (!isCameraRunning) {
+            isCameraRunning = true;
+            readerDiv.classList.remove('hidden');
+            btn.innerText = "Stop Camera";
+            btn.style.background = "var(--apple-red)";
+            
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 150 } }, 
+                (txt) => {
+                    processBarcode(txt);
+                    html5QrCode.pause();
+                    setTimeout(() => html5QrCode.resume(), 1500);
+                }
+            );
+        } else {
+            await html5QrCode.stop();
+            readerDiv.classList.add('hidden');
+            btn.innerText = "Camera Scanner";
+            btn.style.background = "var(--apple-green)";
+            isCameraRunning = false;
+        }
+    }
+
+    // --- 7. Export Logic ---
     function exportResults() {
+        if (productMatrix.length === 0) return alert("No data to export");
+        
+        const wb = XLSX.utils.book_new();
         const data = productMatrix.map(p => ({
-            "Product": p.name, "1/4L": p.counts["1/4 L"], "1L": p.counts["1 L"], "1G": p.counts["1 Gallon"], "Pail": p.counts["1 Pail"]
+            "Product": p.name, 
+            "1/4 L": p.counts["1/4 L"], 
+            "1 L": p.counts["1 L"], 
+            "1 Gallon": p.counts["1 Gallon"], 
+            "Pail": p.counts["1 Pail"]
         }));
-        XLSX.writeFile(XLSX.utils.book_new(), "Inventory.xlsx");
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Inventory_Counts");
+        XLSX.writeFile(wb, "Inventory_Scan_Results.xlsx");
     }
 
     document.getElementById('tableSearch').addEventListener('input', updateUI);
 </script>
+
 </body>
 </html>
