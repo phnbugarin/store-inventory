@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RC Paint Trading</title>
+    <title>RC Paint Trading - Pro Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
     <style>
         :root {
             --apple-blue: #007AFF;
             --apple-bg: #F5F5F7;
-            --apple-card: rgba(255, 255, 255, 0.7);
+            --apple-card: rgba(255, 255, 255, 0.8);
             --apple-text: #1D1D1F;
             --apple-secondary: #86868B;
             --apple-border: rgba(210, 210, 215, 0.5);
@@ -18,98 +20,81 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
             background-color: var(--apple-bg);
             color: var(--apple-text);
             margin: 0;
             display: flex;
             justify-content: center;
-            -webkit-font-smoothing: antialiased;
         }
 
-        .container { width: 100%; max-width: 1000px; padding: 40px 20px; }
+        .container { width: 100%; max-width: 1100px; padding: 20px; }
 
         .card {
             background: var(--apple-card);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border-radius: 22px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
             border: 1px solid var(--apple-border);
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-            margin-bottom: 24px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
 
-        h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.6px; margin: 0 0 4px 0; }
-        .subtitle { color: var(--apple-secondary); margin-bottom: 24px; font-size: 16px; }
+        h1 { font-size: 24px; font-weight: 700; margin: 0 0 5px 0; }
+        .subtitle { color: var(--apple-secondary); font-size: 14px; margin-bottom: 20px; }
 
-        .scan-terminal { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+        /* Scanner Layout */
+        .scan-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
         
-        input[type="text"], select {
+        #reader { 
+            width: 100%; 
+            border-radius: 15px; 
+            overflow: hidden; 
+            background: #000;
+            border: none !important;
+        }
+
+        input[type="text"] {
             width: 100%;
-            padding: 14px 18px;
-            font-size: 16px;
+            padding: 12px 15px;
+            border-radius: 10px;
             border: 1px solid var(--apple-border);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.6);
-            outline: none;
-            transition: all 0.2s;
-            box-sizing: border-box;
+            font-size: 16px;
+            margin-bottom: 10px;
         }
-        input:focus { background: #FFF; border-color: var(--apple-blue); box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); }
 
-        /* Activity Feed with Scroll */
-        .activity-label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--apple-secondary); margin-bottom: 12px; display: block; }
-        .activity-feed { 
-            height: 220px; 
-            overflow-y: auto; 
-            padding-right: 8px;
-        }
-        /* Custom Scrollbar */
-        .activity-feed::-webkit-scrollbar { width: 6px; }
-        .activity-feed::-webkit-scrollbar-thumb { background: var(--apple-border); border-radius: 10px; }
-
+        /* Activity Feed */
+        .activity-feed { height: 300px; overflow-y: auto; }
         .activity-item {
+            background: #fff;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
-            background: white;
-            border-radius: 14px;
-            margin-bottom: 8px;
             font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.02);
         }
 
-        .actions { display: flex; gap: 10px; align-items: center; }
-        .undo-link { color: var(--apple-secondary); font-weight: 500; cursor: pointer; font-size: 12px; }
-        .resolve-link { color: var(--apple-blue); font-weight: 600; cursor: pointer; font-size: 12px; }
-        .error-text { color: var(--apple-red); font-weight: 700; }
+        .active-num { color: var(--apple-blue); font-weight: 700; background: rgba(0, 122, 255, 0.08); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; color: var(--apple-secondary); padding: 10px; border-bottom: 1px solid var(--apple-border); text-transform: uppercase; }
+        td { padding: 12px 10px; border-bottom: 1px solid var(--apple-border); font-size: 14px; }
 
-        /* Table & Search */
-        .table-header-ctrl { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th { text-align: center; padding: 12px; font-size: 11px; color: var(--apple-secondary); font-weight: 700; border-bottom: 1px solid var(--apple-border); text-transform: uppercase; }
-        td { padding: 16px 10px; border-bottom: 1px solid var(--apple-border); text-align: center; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        
-        .col-name { width: 40%; text-align: left; font-weight: 600; }
-        .active-num { color: var(--apple-blue); font-weight: 700; background: rgba(0, 122, 255, 0.05); border-radius: 8px; }
-
-        .btn-row { display: flex; gap: 10px; margin-top: 15px; }
-        button { padding: 12px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .btn-main { background: var(--apple-blue); color: white; flex: 1; }
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+        button { padding: 10px 15px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .btn-main { background: var(--apple-blue); color: #fff; }
+        .btn-cam { background: var(--apple-green); color: #fff; }
         .btn-alt { background: #E8E8ED; color: var(--apple-text); }
 
-        #dropzone { border: 2px dashed var(--apple-border); border-radius: 20px; padding: 100px 20px; text-align: center; cursor: pointer; }
         .hidden { display: none; }
+        #dropzone { border: 2px dashed var(--apple-border); padding: 60px; text-align: center; border-radius: 20px; cursor: pointer; }
 
-        /* Modal for manual fix */
-        #resolveModal {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 30px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            z-index: 100; width: 400px;
+        @media (max-width: 768px) {
+            .scan-grid { grid-template-columns: 1fr; }
         }
-        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); z-index: 99; }
     </style>
 </head>
 <body>
@@ -117,44 +102,52 @@
 <div class="container">
     <div id="setupBox" class="card">
         <h1>RC Paint Trading</h1>
-        <p class="subtitle">Upload your master inventory list.</p>
+        <p class="subtitle">Upload Excel to start inventory count.</p>
         <div id="dropzone" onclick="document.getElementById('excelUpload').click()">
-            <p style="font-weight: 500; color: var(--apple-blue);">Select Excel Spreadsheet</p>
+            <p style="color: var(--apple-blue); font-weight: 600;">Tap to Upload Spreadsheet</p>
         </div>
         <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
     </div>
 
     <div id="mainDashboard" class="hidden">
-        <div class="card">
-            <div class="scan-terminal">
-                <div>
-                    <h1>Scanner</h1>
-                    <p class="subtitle">Ready for input...</p>
-                    <input type="text" id="barcodeInput" placeholder="Scan barcode..." autofocus>
-                    <div class="btn-row">
-                        <button class="btn-main" onclick="exportResults()">Export</button>
-                        <button class="btn-alt" onclick="location.reload()">Reset</button>
-                    </div>
+        <div class="scan-grid">
+            <div class="card">
+                <h1>Input Terminal</h1>
+                <div class="btn-row" style="margin-bottom: 15px;">
+                    <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Start Camera Scanner</button>
+                    <button class="btn-alt" onclick="input.focus()">Focus Manual Input</button>
                 </div>
-                <div>
-                    <span class="activity-label">Scan History</span>
-                    <div class="activity-feed" id="activityFeed"></div>
+                
+                <div id="reader" class="hidden"></div>
+                
+                <div id="manualInputArea">
+                    <input type="text" id="barcodeInput" placeholder="Scan with hardware or type here..." autofocus>
                 </div>
+
+                <div class="btn-row">
+                    <button class="btn-main" onclick="exportResults()">Export Excel</button>
+                    <button class="btn-alt" onclick="location.reload()">Reset App</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <span style="font-size: 12px; font-weight: 700; color: var(--apple-secondary);">LIVE HISTORY</span>
+                <div class="activity-feed" id="activityFeed"></div>
             </div>
         </div>
 
         <div class="card">
-            <div class="table-header-ctrl">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin:0">Inventory Matrix</h3>
-                <input type="text" id="tableSearch" placeholder="Search products..." style="width: 250px; padding: 8px 12px;">
+                <input type="text" id="tableSearch" placeholder="Search products..." style="width: 200px; padding: 8px;">
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th class="col-name">Product Name</th>
+                        <th style="width: 40%;">Product Name</th>
                         <th>1/4 L</th>
                         <th>1 L</th>
-                        <th>1 Gallon</th>
+                        <th>1 Gal</th>
                         <th>Pail</th>
                     </tr>
                 </thead>
@@ -164,36 +157,15 @@
     </div>
 </div>
 
-<div id="modalContainer" class="hidden">
-    <div class="overlay" onclick="closeModal()"></div>
-    <div id="resolveModal">
-        <h3 style="margin-top:0">Resolve Unknown Scan</h3>
-        <p id="unknownDisplay" style="font-family: monospace; background: #eee; padding: 10px; border-radius: 8px;"></p>
-        <label class="activity-label">Assign to Product</label>
-        <select id="productSelect"></select>
-        <br><br>
-        <label class="activity-label">Select Size</label>
-        <select id="sizeSelect">
-            <option value="1/4 L">1/4 L</option>
-            <option value="1 L">1 L</option>
-            <option value="1 Gallon">1 Gallon</option>
-            <option value="1 Pail">Pail</option>
-        </select>
-        <div class="btn-row" style="margin-top:25px;">
-            <button class="btn-main" onclick="applyResolution()">Confirm</button>
-            <button class="btn-alt" onclick="closeModal()">Cancel</button>
-        </div>
-    </div>
-</div>
-
 <script>
     let productMatrix = [];
     let history = [];
-    let pendingResolveIndex = null;
-
+    let html5QrCode = null;
+    let isCameraRunning = false;
     const input = document.getElementById('barcodeInput');
-    const searchInput = document.getElementById('tableSearch');
     const feed = document.getElementById('activityFeed');
+
+    // --- Core Logic ---
 
     // Excel Processing
     document.getElementById('excelUpload').addEventListener('change', function(e) {
@@ -217,119 +189,128 @@
 
             document.getElementById('setupBox').classList.add('hidden');
             document.getElementById('mainDashboard').classList.remove('hidden');
-            populateSelect();
             updateUI();
-            input.focus();
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // Barcode Input
+    // Barcode Processing Function
+    function processBarcode(code) {
+        if (!code) return;
+        let match = false;
+
+        productMatrix.forEach(p => {
+            for (let size in p.codes) {
+                if (p.codes[size] === code && code !== "") {
+                    p.counts[size]++;
+                    history.unshift({ name: p.name, size: size, error: false });
+                    speak(`${p.name}, ${size}`);
+                    match = true;
+                }
+            }
+        });
+
+        if (!match) {
+            history.unshift({ name: "Unknown Barcode", size: code, error: true });
+            speak("Unknown barcode");
+        }
+        
+        updateUI();
+    }
+
+    // Manual Input Event
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            const code = input.value.trim();
-            if (!code) return;
-
-            let match = false;
-            productMatrix.forEach(p => {
-                for (let size in p.codes) {
-                    if (p.codes[size] === code && code !== "") {
-                        p.counts[size]++;
-                        history.unshift({ name: p.name, size: size, timestamp: Date.now(), error: false });
-                        match = true;
-                    }
-                }
-            });
-
-            if (!match) history.unshift({ name: "Unknown Barcode", size: code, error: true });
-            
+            processBarcode(input.value.trim());
             input.value = '';
-            updateUI();
         }
     });
 
-    // Search Filter
-    searchInput.addEventListener('input', updateUI);
+    // --- Camera Functions ---
+
+    async function toggleCamera() {
+        const readerDiv = document.getElementById('reader');
+        const btn = document.getElementById('camToggleBtn');
+
+        if (!isCameraRunning) {
+            readerDiv.classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+            try {
+                // Unlock audio for iOS
+                speak("Camera starting");
+                
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (decodedText) => {
+                        processBarcode(decodedText);
+                        // Brief pause to prevent double-scanning
+                        html5QrCode.pause();
+                        setTimeout(() => html5QrCode.resume(), 1500);
+                    }
+                );
+                isCameraRunning = true;
+                btn.innerText = "Stop Camera Scanner";
+                btn.style.background = "var(--apple-red)";
+            } catch (err) {
+                alert("Camera error: Check permissions in Safari settings.");
+            }
+        } else {
+            await html5QrCode.stop();
+            readerDiv.classList.add('hidden');
+            isCameraRunning = false;
+            btn.innerText = "Start Camera Scanner";
+            btn.style.background = "var(--apple-green)";
+        }
+    }
+
+    // --- Helpers ---
+
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 1.1;
+            window.speechSynthesis.speak(msg);
+        }
+    }
 
     function updateUI() {
-        const searchTerm = searchInput.value.toLowerCase();
+        // Update History
+        feed.innerHTML = history.map((item, idx) => `
+            <div class="activity-item" style="border-left: 4px solid ${item.error ? 'var(--apple-red)' : 'var(--apple-green)'}">
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <small>${item.size}</small>
+                </div>
+                <button class="btn-alt" onclick="undo(${idx})" style="padding:5px 10px; font-size:10px;">Undo</button>
+            </div>
+        `).join('');
 
         // Update Table
+        const search = document.getElementById('tableSearch').value.toLowerCase();
         document.getElementById('matrixBody').innerHTML = productMatrix
-            .filter(p => p.name.toLowerCase().includes(searchTerm))
+            .filter(p => p.name.toLowerCase().includes(search))
             .map(p => `
                 <tr>
-                    <td class="col-name">${p.name}</td>
+                    <td><strong>${p.name}</strong></td>
                     <td class="${p.counts["1/4 L"] > 0 ? 'active-num' : ''}">${p.counts["1/4 L"]}</td>
                     <td class="${p.counts["1 L"] > 0 ? 'active-num' : ''}">${p.counts["1 L"]}</td>
                     <td class="${p.counts["1 Gallon"] > 0 ? 'active-num' : ''}">${p.counts["1 Gallon"]}</td>
                     <td class="${p.counts["1 Pail"] > 0 ? 'active-num' : ''}">${p.counts["1 Pail"]}</td>
                 </tr>
             `).join('');
-
-        // Update Feed
-        if (history.length === 0) {
-            feed.innerHTML = `<p style="color: #bbb; text-align: center; padding-top: 80px; font-size: 13px;">No scans yet</p>`;
-            return;
-        }
-
-        feed.innerHTML = history.map((item, index) => `
-            <div class="activity-item">
-                <span style="max-width: 65%; overflow: hidden;">
-                    <strong class="${item.error ? 'error-text' : ''}">${item.name}</strong><br>
-                    <small style="color:var(--apple-secondary)">${item.size}</small>
-                </span>
-                <div class="actions">
-                    ${item.error ? `<span class="resolve-link" onclick="openResolve(${index})">Resolve</span>` : ''}
-                    <span class="undo-link" onclick="undo(${index})">Undo</span>
-                </div>
-            </div>
-        `).join('');
     }
 
     function undo(index) {
         const item = history[index];
         if (!item.error) {
-            const p = productMatrix.find(p => p.name === item.name);
+            const p = productMatrix.find(prod => prod.name === item.name);
             if (p) p.counts[item.size]--;
         }
         history.splice(index, 1);
-        updateUI();
-    }
-
-    // Resolution Logic
-    function populateSelect() {
-        const select = document.getElementById('productSelect');
-        select.innerHTML = productMatrix.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-    }
-
-    function openResolve(index) {
-        pendingResolveIndex = index;
-        document.getElementById('unknownDisplay').innerText = `Barcode: ${history[index].size}`;
-        document.getElementById('modalContainer').classList.remove('hidden');
-    }
-
-    function closeModal() {
-        document.getElementById('modalContainer').classList.add('hidden');
-        pendingResolveIndex = null;
-    }
-
-    function applyResolution() {
-        const productName = document.getElementById('productSelect').value;
-        const size = document.getElementById('sizeSelect').value;
-        
-        const product = productMatrix.find(p => p.name === productName);
-        if (product) {
-            product.counts[size]++;
-            // Update history item
-            history[pendingResolveIndex] = {
-                name: productName,
-                size: size,
-                timestamp: Date.now(),
-                error: false
-            };
-        }
-        closeModal();
         updateUI();
     }
 
@@ -344,136 +325,11 @@
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-        XLSX.writeFile(wb, "HeraPrint_Inventory_Export.xlsx");
+        XLSX.writeFile(wb, "Inventory_Count.xlsx");
     }
 
-    // New Voice Synthesis Function
-    function speakScan(text) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Stop current speech to start new one immediately
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.1; 
-            utterance.pitch = 1.0;
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-
-    // Barcode Input with "Error" Voice Feedback
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const code = input.value.trim();
-            if (!code) return;
-
-            let match = false;
-            productMatrix.forEach(p => {
-                for (let size in p.codes) {
-                    if (p.codes[size] === code && code !== "") {
-                        p.counts[size]++;
-                        history.unshift({ name: p.name, size: size, timestamp: Date.now(), error: false });
-                        
-                        // Success Speech: "Product Name, Size"
-                        speakScan(`${p.name}, ${size}`);
-                        
-                        // Visual Success (Green flash)
-                        input.style.borderColor = "var(--apple-green)";
-                        setTimeout(() => input.style.borderColor = "", 400);
-                        
-                        match = true;
-                    }
-                }
-            });
-
-            if (!match) {
-                history.unshift({ name: "Unknown Barcode", size: code, error: true });
-                
-                // Error Speech: "Error. Unknown Barcode."
-                speakScan("Error. Unknown Barcode.");
-                
-                // Visual Error (Red flash and shake)
-                input.style.borderColor = "var(--apple-red)";
-                input.style.backgroundColor = "rgba(255, 59, 48, 0.05)";
-                setTimeout(() => {
-                    input.style.borderColor = "";
-                    input.style.backgroundColor = "";
-                }, 600);
-            }
-            
-            input.value = '';
-            updateUI();
-        }
-    });
-
-    // Barcode Input with Visual Feedback
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const code = input.value.trim();
-            if (!code) return;
-
-            let match = false;
-            productMatrix.forEach(p => {
-                for (let size in p.codes) {
-                    if (p.codes[size] === code && code !== "") {
-                        p.counts[size]++;
-                        history.unshift({ name: p.name, size: size, timestamp: Date.now(), error: false });
-                        
-                        // Audio Feedback
-                        speakScan(`${p.name}, ${size}`);
-                        
-                        // Visual Feedback (Flash green)
-                        input.style.backgroundColor = "rgba(52, 199, 89, 0.2)";
-                        setTimeout(() => input.style.backgroundColor = "", 300);
-                        
-                        match = true;
-                    }
-                }
-            });
-
-            if (!match) {
-                history.unshift({ name: "Unknown Barcode", size: code, error: true });
-                speakScan("Unknown Barcode");
-                
-                // Visual Feedback (Flash red)
-                input.style.backgroundColor = "rgba(255, 59, 48, 0.2)";
-                setTimeout(() => input.style.backgroundColor = "", 300);
-            }
-            
-            input.value = '';
-            updateUI();
-        }
-    });
-
-    // Update the input event listener logic:
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const code = input.value.trim();
-            if (!code) return;
-
-            let match = false;
-            productMatrix.forEach(p => {
-                for (let size in p.codes) {
-                    if (p.codes[size] === code && code !== "") {
-                        p.counts[size]++;
-                        history.unshift({ name: p.name, size: size, timestamp: Date.now(), error: false });
-                        
-                        // VOICE FEEDBACK FOR SUCCESS
-                        speakScan(`${p.name}, ${size}`);
-                        
-                        match = true;
-                    }
-                }
-            });
-
-            if (!match) {
-                history.unshift({ name: "Unknown Barcode", size: code, error: true });
-                // VOICE FEEDBACK FOR ERROR
-                speakScan("Unknown Barcode");
-            }
-            
-            input.value = '';
-            updateUI();
-        }
-    });
+    document.getElementById('tableSearch').addEventListener('input', updateUI);
 </script>
+
 </body>
 </html>
