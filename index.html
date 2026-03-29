@@ -10,150 +10,169 @@
     <style>
         :root {
             --apple-blue: #007AFF;
-            --apple-bg: #F5F5F7;
-            --apple-card: rgba(255, 255, 255, 0.8);
-            --apple-text: #1D1D1F;
-            --apple-secondary: #86868B;
-            --apple-border: rgba(210, 210, 215, 0.5);
+            --apple-bg: #F2F2F7;
+            --apple-card: rgba(255, 255, 255, 0.9);
+            --apple-text: #1C1C1E;
+            --apple-secondary: #8E8E93;
+            --apple-border: rgba(0, 0, 0, 0.1);
             --apple-red: #FF3B30;
             --apple-green: #34C759;
+            --radius: 16px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
             background-color: var(--apple-bg);
             color: var(--apple-text);
             margin: 0;
-            overflow-x: hidden;
-        }
-
-        .container { width: 100%; max-width: 1200px; padding: 20px; margin: 0 auto; }
-
-        .card {
-            background: var(--apple-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 20px;
-            border: 1px solid var(--apple-border);
             padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
         }
 
-        h1 { font-size: 22px; font-weight: 700; margin: 0 0 5px 0; }
-        
-        /* Responsive Grid */
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+        /* Grid Layout */
         .scan-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             gap: 20px; 
-            align-items: stretch; /* Forces both cards to same height */
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            align-items: stretch;
         }
 
-        /* History Feed - Responsive Height */
-        .history-container {
-            height: 100%;
+        .card {
+            background: var(--apple-card);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: var(--radius);
+            border: 1px solid var(--apple-border);
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
             display: flex;
             flex-direction: column;
+            transition: all 0.3s ease;
         }
 
-        .activity-feed { 
-            flex-grow: 1; /* Fills all available space in the card */
-            overflow-y: auto; 
-            background: rgba(0,0,0,0.02);
+        h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+        .label { font-size: 11px; font-weight: 700; color: var(--apple-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+        /* Camera & Input */
+        #reader { 
+            width: 100%; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            background: #000; 
+            margin-bottom: 16px;
+            border: 1px solid var(--apple-border);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
             border-radius: 12px;
-            padding: 10px;
+            border: 1px solid var(--apple-border);
+            font-size: 16px;
+            background: rgba(255,255,255,0.5);
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border 0.2s;
+        }
+        input[type="text"]:focus { border-color: var(--apple-blue); }
+
+        /* History Styling */
+        .activity-feed { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            background: rgba(0,0,0,0.03);
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 350px; /* Aligns with camera height roughly */
         }
 
         .activity-item {
             background: #fff;
-            padding: 12px;
+            padding: 14px;
             border-radius: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-        }
-
-        /* Inputs */
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
             border: 1px solid var(--apple-border);
-            font-size: 16px;
-            background: #fff;
         }
 
-        #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
+        .item-info strong { display: block; font-size: 14px; }
+        .item-info small { color: var(--apple-secondary); font-size: 12px; }
 
-        .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        button { padding: 10px 15px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        /* Buttons */
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { 
+            flex: 1;
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            border: none; 
+            font-weight: 600; 
+            cursor: pointer; 
+            font-size: 13px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); opacity: 0.8; }
+        
         .btn-main { background: var(--apple-blue); color: #fff; }
         .btn-cam { background: var(--apple-green); color: #fff; }
-        .btn-alt { background: #E8E8ED; color: var(--apple-text); }
-        .btn-resolve { background: #FF9500; color: white; }
+        .btn-alt { background: rgba(0,0,0,0.05); color: var(--apple-text); }
+        .btn-resolve { background: #FF9500; color: white; padding: 6px 12px; font-size: 11px; }
 
-        /* Resolution Modal */
-        #resolveModal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal-content { background: white; padding: 20px; border-radius: 20px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
-
-        .hidden { display: none; }
-        .active-num { color: var(--apple-blue); font-weight: 700; background: rgba(0, 122, 255, 0.08); border-radius: 6px; }
-        
+        /* Table Matrix */
+        .matrix-card { padding: 0; overflow: hidden; }
+        .matrix-header { padding: 20px 24px; border-bottom: 1px solid var(--apple-border); }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 11px; color: var(--apple-secondary); padding: 10px; border-bottom: 1px solid var(--apple-border); }
-        td { padding: 10px; border-bottom: 1px solid var(--apple-border); font-size: 13px; }
+        th { text-align: left; font-size: 12px; color: var(--apple-secondary); padding: 16px 24px; background: rgba(0,0,0,0.02); }
+        td { padding: 14px 24px; border-bottom: 1px solid var(--apple-border); font-size: 14px; }
+        .active-num { color: var(--apple-blue); font-weight: 700; }
 
-        @media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } .activity-feed { height: 300px; } }
+        @media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="setupBox" class="card">
+    <div id="setupBox" class="card" style="text-align: center; padding: 60px 20px;">
         <h1>RC Paint Trading</h1>
-        <div id="dropzone" style="border: 2px dashed var(--apple-border); padding: 40px; text-align: center; border-radius: 20px;" onclick="document.getElementById('excelUpload').click()">
-            <p style="color: var(--apple-blue); font-weight: 600;">Upload Inventory Excel</p>
-        </div>
-        <input type="file" id="excelUpload" class="hidden" accept=".xlsx">
+        <p style="color: var(--apple-secondary); margin-bottom: 30px;">Upload your inventory spreadsheet to begin.</p>
+        <button class="btn-main" style="max-width: 300px; margin: 0 auto;" onclick="document.getElementById('excelUpload').click()">Choose Excel File</button>
+        <input type="file" id="excelUpload" class="hidden" accept=".xlsx" style="display:none">
     </div>
 
-    <div id="mainDashboard" class="hidden">
+    <div id="mainDashboard" class="hidden" style="display:none">
         <div class="scan-grid">
-            <div class="card" id="leftCard">
-                <h1>Terminal</h1>
-                <div id="status" style="font-size:10px; margin-bottom:10px; color: var(--apple-green);">● READY FOR HARDWARE</div>
+            <div class="card">
+                <div class="label" id="status">● Terminal Ready</div>
+                <h1>Input Hub</h1>
                 
-                <div id="reader" class="hidden" style="margin-bottom:10px;"></div>
+                <div id="reader" class="hidden" style="display:none"></div>
                 
-                <input type="text" id="barcodeInput" 
-                       placeholder="Scan here..." 
-                       inputmode="none" 
-                       autocomplete="off">
+                <input type="text" id="barcodeInput" placeholder="Scan Barcode Here..." inputmode="none">
 
                 <div class="btn-row">
-                    <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Use Camera</button>
+                    <button id="camToggleBtn" class="btn-cam" onclick="toggleCamera()">Camera Scanner</button>
                     <button class="btn-alt" onclick="forceFocus()">Reset Focus</button>
-                    <button class="btn-main" onclick="exportResults()">Export</button>
+                    <button class="btn-main" onclick="exportResults()">Export data</button>
                 </div>
             </div>
 
-            <div class="card history-container">
-                <span style="font-size: 11px; font-weight: 700; color: var(--apple-secondary); margin-bottom: 10px;">RECENT SCANS</span>
-                <div class="activity-feed" id="activityFeed"></div>
+            <div class="card">
+                <div class="label">Recent Activity</div>
+                <div class="activity-feed" id="activityFeed">
+                    </div>
             </div>
         </div>
 
-        <div class="card">
-            <input type="text" id="tableSearch" placeholder="Search products..." style="margin-bottom:15px;">
+        <div class="card matrix-card">
+            <div class="matrix-header">
+                <div class="label">Inventory Summary</div>
+                <input type="text" id="tableSearch" placeholder="Search products..." style="margin: 10px 0 0 0; padding: 10px;">
+            </div>
             <table>
                 <thead>
                     <tr><th>Product</th><th>1/4 L</th><th>1 L</th><th>1 Gal</th><th>Pail</th></tr>
@@ -161,16 +180,6 @@
                 <tbody id="matrixBody"></tbody>
             </table>
         </div>
-    </div>
-</div>
-
-<div id="resolveModal">
-    <div class="modal-content">
-        <h3>Resolve Unknown Barcode</h3>
-        <p id="unknownDisplay" style="font-family: monospace; background: #eee; padding: 5px;"></p>
-        <input type="text" id="modalSearch" placeholder="Search product to assign..." oninput="filterResolveList()">
-        <div id="resolveList" style="margin-top:15px;"></div>
-        <button class="btn-alt" style="width:100%; margin-top:10px;" onclick="closeResolve()">Cancel</button>
     </div>
 </div>
 
